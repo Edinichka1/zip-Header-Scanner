@@ -866,6 +866,15 @@ private:
 public:
     zip() = delete;
 
+    ~zip()
+    {
+        for (unsigned long long i = 0; i < vecLEFD.size(); ++i)
+        {
+            delete[] vecLEFD[i].file_data;
+            vecLEFD[i].file_data = nullptr;
+        }
+    }
+
     zip(const char *path = "")
         : path(path)
     {
@@ -885,9 +894,6 @@ public:
             read(inf, checker, 4);
             inf.seekg(-4, std::ios_base::cur);
 
-            // printHex(checker, 4);
-            // std::cout << std::endl;
-
             if (checker[0] == 0x50 && checker[1] == 0x4b && checker[2] == 0x03 && checker[3] == 0x04)
             {
                 // [local file header n] // [encryption header n] // [file data n] // [data descriptor n]
@@ -895,30 +901,30 @@ public:
 
                 // [local file header n]
                 LEFD.local_file_h.init(inf);
-                LEFD.local_file_h.print();
+                // LEFD.local_file_h.print();
 
                 // [encryption header n]
 
                 // [file data n]
                 if (skip_files)
                 {
-                    std::cout << "file_data = ";
+                    // std::cout << "file_data = ";
                     inf.seekg(LEFD.local_file_h.universal_compressed_size - 16, std::ios_base::cur);
                 }
                 else
                 {
                     LEFD.file_data = new char[LEFD.local_file_h.universal_compressed_size];
                     read(inf, LEFD.file_data, LEFD.local_file_h.universal_compressed_size);
-                    std::cout << "file_data = ";
-                    printHexText(LEFD.file_data, LEFD.local_file_h.universal_compressed_size);
+                    // std::cout << "file_data = ";
+                    // printHexText(LEFD.file_data, LEFD.local_file_h.universal_compressed_size);
                 }
-                std::cout << std::endl;
+                // std::cout << std::endl;
 
                 // [data descriptor n]
                 if (LEFD.local_file_h.general_purpose_bit_flag[0] & 0b00001000)
                 {
                     LEFD.data_descript.init(inf, LEFD.local_file_h.zip64);
-                    LEFD.data_descript.print();
+                    // LEFD.data_descript.print();
                 }
 
                 // save
@@ -932,14 +938,14 @@ public:
             {
                 // [archive extra data record]
                 aedr.init(inf);
-                aedr.print();
+                // aedr.print();
             }
             else if (checker[0] == 0x50 && checker[1] == 0x4b && checker[2] == 0x01 && checker[3] == 0x02)
             {
                 // [central directory header n]
                 central_directory_header cdh;
                 cdh.init(inf);
-                cdh.print();
+                // cdh.print();
 
                 // save
                 vecCDH.push_back(cdh);
@@ -948,25 +954,87 @@ public:
             {
                 // Zip64 end of central directory locator
                 zip64eocdl.init(inf);
-                zip64eocdl.print();
+                // zip64eocdl.print();
             }
             else if (checker[0] == 0x50 && checker[1] == 0x4b && checker[2] == 0x06 && checker[3] == 0x06)
             {
                 // Zip64 end of central directory record
                 zip64eocdr.init(inf);
-                zip64eocdr.print();
+                // zip64eocdr.print();
             }
             else if (checker[0] == 0x50 && checker[1] == 0x4b && checker[2] == 0x05 && checker[3] == 0x06)
             {
                 // [end of central directory record]
                 eocdr.init(inf);
-                eocdr.print();
+                // eocdr.print();
 
-                std::cout << std::endl
-                          << std::endl
-                          << std::endl;
+                // std::cout << std::endl
+                //           << std::endl
+                //           << std::endl;
                 break;
             }
+            // std::cout << std::endl
+            //           << std::endl
+            //           << std::endl;
+        }
+
+        inf.close();
+    }
+
+    void print()
+    {
+        for (int i = 0; i < vecLEFD.size(); ++i)
+        {
+            vecLEFD[i].local_file_h.print();
+            if (skip_files)
+            {
+                std::cout << "file_data = ";
+            }
+            else
+            {
+                std::cout << "file_data = ";
+                printHexText(vecLEFD[i].file_data, vecLEFD[i].local_file_h.universal_compressed_size);
+            }
+            std::cout << std::endl;
+            if (vecLEFD[i].local_file_h.general_purpose_bit_flag[0] & 0b00001000)
+            {
+                vecLEFD[i].data_descript.print();
+            }
+
+            std::cout << std::endl
+                      << std::endl
+                      << std::endl;
+        }
+
+        if (aedr.inited)
+        {
+            aedr.print();
+            std::cout << std::endl
+                      << std::endl
+                      << std::endl;
+        }
+
+        for (int i = 0; i < vecCDH.size(); ++i)
+        {
+            vecCDH[i].print();
+
+            std::cout << std::endl
+                      << std::endl
+                      << std::endl;
+        }
+
+        if (zip64eocdl.inited)
+        {
+            zip64eocdl.print();
+            std::cout << std::endl
+                      << std::endl
+                      << std::endl;
+        }
+
+        if (eocdr.inited)
+        {
+            eocdr.print();
+
             std::cout << std::endl
                       << std::endl
                       << std::endl;
@@ -977,5 +1045,6 @@ public:
 int main(int argc, char *argv[])
 {
     zip x("example.zip");
+    x.print();
     return 0;
 }
